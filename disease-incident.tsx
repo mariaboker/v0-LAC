@@ -25,8 +25,8 @@ interface StatusEntry {
   dateTime: string
   updatedBy: string
   notes: string
-  backendAction: string
   userGroup: string
+  finalDiagnosis?: string
 }
 
 export default function DiseaseIncidentForm() {
@@ -40,7 +40,7 @@ export default function DiseaseIncidentForm() {
   const [selectedStatus, setSelectedStatus] = useState("")
   const [selectedUserGroup, setSelectedUserGroup] = useState("PHNS")
   const [returnReason, setReturnReason] = useState("")
-  const [backendAction, setBackendAction] = useState("")
+  const [finalDiagnosis, setFinalDiagnosis] = useState("")
   const [pageNumber, setPageNumber] = useState("1")
   const [viewingEntry, setViewingEntry] = useState<StatusEntry | null>(null)
   const [capturedDate, setCapturedDate] = useState("")
@@ -71,7 +71,7 @@ export default function DiseaseIncidentForm() {
     setSelectedStep("")
     setSelectedStatus("")
     setReturnReason("")
-    setBackendAction("")
+    setFinalDiagnosis("")
     setShowPopup(true)
   }
 
@@ -110,6 +110,9 @@ export default function DiseaseIncidentForm() {
     setSelectedUserGroup(group)
     setSelectedStep("")
     setSelectedStatus("")
+    if (group !== "AMD") {
+      setFinalDiagnosis("")
+    }
   }
 
   // Add new status entry
@@ -123,8 +126,12 @@ export default function DiseaseIncidentForm() {
       dateTime: `${capturedDate} ${capturedTime}`,
       updatedBy: "Tester's name",
       notes: selectedStatus.includes("Returned") ? returnReason : "",
-      backendAction: backendAction,
       userGroup: selectedUserGroup,
+    }
+
+    // Add final diagnosis if AMD user group
+    if (selectedUserGroup === "AMD") {
+      newEntry.finalDiagnosis = finalDiagnosis
     }
 
     setStatusEntries([...statusEntries, newEntry])
@@ -132,7 +139,7 @@ export default function DiseaseIncidentForm() {
     setSelectedStep("")
     setSelectedStatus("")
     setReturnReason("")
-    setBackendAction("")
+    setFinalDiagnosis("")
   }
 
   // Handle page number change
@@ -431,7 +438,7 @@ export default function DiseaseIncidentForm() {
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">
                       Notes/Reason to return
                     </div>
-                    <div className="p-2 bg-gray-200 text-gray-700 font-bold">Backend Action</div>
+                    <div className="p-2 bg-blue-800 text-white font-bold">Final Diagnosis</div>
                   </div>
 
                   {/* Table Body */}
@@ -463,10 +470,10 @@ export default function DiseaseIncidentForm() {
                                 : ""}
                             </div>
                             <div className="p-2">
-                              {entry.backendAction
-                                ? entry.backendAction.length > 30
-                                  ? `${entry.backendAction.substring(0, 30)}...`
-                                  : entry.backendAction
+                              {entry.finalDiagnosis
+                                ? entry.finalDiagnosis.length > 30
+                                  ? `${entry.finalDiagnosis.substring(0, 30)}...`
+                                  : entry.finalDiagnosis
                                 : ""}
                             </div>
                           </div>
@@ -677,23 +684,26 @@ export default function DiseaseIncidentForm() {
                   {selectedStatus.includes("Returned") && (
                     <div className="mb-6">
                       <label className="block text-blue-800 font-bold mb-2">Reason to return:</label>
-                      <textarea
-                        className="w-full border border-gray-300 p-2 rounded h-24"
+                      <input
+                        type="text"
+                        className="w-full border border-gray-300 p-2 rounded"
                         value={returnReason}
                         onChange={(e) => setReturnReason(e.target.value)}
                       />
                     </div>
                   )}
 
-                  <div className="mb-6">
-                    <label className="block text-blue-800 font-bold mb-2">What should happen on the back end?</label>
-                    <textarea
-                      className="w-full border border-gray-300 p-2 rounded h-24"
-                      value={backendAction}
-                      onChange={(e) => setBackendAction(e.target.value)}
-                      placeholder="Describe what should happen on the back end..."
-                    />
-                  </div>
+                  {selectedUserGroup === "AMD" && (
+                    <div className="mb-6">
+                      <label className="block text-blue-800 font-bold mb-2">Final Diagnosis:</label>
+                      <input
+                        type="text"
+                        className="w-full border border-gray-300 p-2 rounded"
+                        value={finalDiagnosis}
+                        onChange={(e) => setFinalDiagnosis(e.target.value)}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -763,19 +773,23 @@ export default function DiseaseIncidentForm() {
                 </div>
               </div>
 
-              <div className="mb-4">
-                <div className="font-bold text-blue-800">Notes/Reason to return:</div>
-                <div className="p-2 bg-white border border-blue-200 rounded min-h-[100px] whitespace-pre-wrap">
-                  {viewingEntry.notes || "No notes provided"}
+              {viewingEntry.notes && (
+                <div className="mb-4">
+                  <div className="font-bold text-blue-800">Reason to return:</div>
+                  <div className="p-2 bg-white border border-blue-200 rounded whitespace-pre-wrap">
+                    {viewingEntry.notes}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="mb-4">
-                <div className="font-bold text-blue-800">Backend Action:</div>
-                <div className="p-2 bg-white border border-blue-200 rounded min-h-[100px] whitespace-pre-wrap">
-                  {viewingEntry.backendAction || "No backend action specified"}
+              {viewingEntry.finalDiagnosis && (
+                <div className="mb-4">
+                  <div className="font-bold text-blue-800">Final Diagnosis:</div>
+                  <div className="p-2 bg-white border border-blue-200 rounded whitespace-pre-wrap">
+                    {viewingEntry.finalDiagnosis}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="text-right">
                 <button

@@ -75,11 +75,10 @@ export default function DiseaseIncidentForm() {
     setShowPopup(true)
   }
 
-  // Update the getStepOptions function to include PHI and SPHI options and remove PHNS/PHN prefixes
-  // Get available step options based on selected user group
+  // Update the getStepOptions function to include "PHI Support" for PHNS and SPHI
   const getStepOptions = () => {
     if (selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") {
-      return ["Receive Assignment", "Review"]
+      return ["Receive Assignment", "Review", "PHI Support"]
     } else if (selectedUserGroup === "PHN" || selectedUserGroup === "PHI") {
       return ["Receive Assignment", "Fieldwork Status"]
     } else if (selectedUserGroup === "AMD") {
@@ -88,8 +87,7 @@ export default function DiseaseIncidentForm() {
     return []
   }
 
-  // Update the getStatusOptions function to remove PHNS/PHN prefixes
-  // Get available status options based on selected step
+  // Update the getStatusOptions function to include options for "PHI Support"
   const getStatusOptions = () => {
     switch (selectedStep) {
       case "Receive Assignment":
@@ -105,6 +103,8 @@ export default function DiseaseIncidentForm() {
         return ["Approved", "Returned", "Closed"]
       case "AMD Review":
         return ["Pending", "Approved", "Returned"]
+      case "PHI Support":
+        return ["Request", "Completed"]
       default:
         return []
     }

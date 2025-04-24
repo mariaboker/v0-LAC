@@ -75,28 +75,33 @@ export default function DiseaseIncidentForm() {
     setShowPopup(true)
   }
 
+  // Update the getStepOptions function to include PHI and SPHI options and remove PHNS/PHN prefixes
   // Get available step options based on selected user group
   const getStepOptions = () => {
-    if (selectedUserGroup === "PHNS") {
-      return ["PHNS Receive Assignment", "PHNS Review"]
-    } else if (selectedUserGroup === "PHN") {
-      return ["PHN Receive Assignment", "Fieldwork Status"]
+    if (selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") {
+      return ["Receive Assignment", "Review"]
+    } else if (selectedUserGroup === "PHN" || selectedUserGroup === "PHI") {
+      return ["Receive Assignment", "Fieldwork Status"]
     } else if (selectedUserGroup === "AMD") {
       return ["AMD Review"]
     }
     return []
   }
 
+  // Update the getStatusOptions function to remove PHNS/PHN prefixes
   // Get available status options based on selected step
   const getStatusOptions = () => {
     switch (selectedStep) {
-      case "PHNS Receive Assignment":
-        return ["Accepted", "Returned", "Closed", "Transfer"]
-      case "PHN Receive Assignment":
-        return ["Accepted - Fieldwork In Progress", "Returned"]
+      case "Receive Assignment":
+        if (selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") {
+          return ["Accepted", "Returned", "Closed", "Transfer"]
+        } else if (selectedUserGroup === "PHN" || selectedUserGroup === "PHI") {
+          return ["Accepted - Fieldwork In Progress", "Returned"]
+        }
+        return []
       case "Fieldwork Status":
         return ["Completed", "Returned"]
-      case "PHNS Review":
+      case "Review":
         return ["Approved", "Returned", "Closed"]
       case "AMD Review":
         return ["Pending", "Approved", "Returned"]
@@ -427,10 +432,11 @@ export default function DiseaseIncidentForm() {
               <div className="p-4">
                 <div className="border border-blue-300 rounded overflow-hidden">
                   {/* Table Header */}
-                  <div className="grid grid-cols-7">
+                  <div className="grid grid-cols-8">
                     <div className="p-2 border-r border-blue-600 flex items-center bg-blue-800 text-white font-bold">
                       ID <ChevronDown className="ml-1 h-4 w-4" />
                     </div>
+                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">User Group</div>
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Step</div>
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Status</div>
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Date and Time</div>
@@ -447,7 +453,7 @@ export default function DiseaseIncidentForm() {
                       ? statusEntries.map((entry, index) => (
                           <div
                             key={entry.id}
-                            className={`grid grid-cols-7 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
+                            className={`grid grid-cols-8 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
                           >
                             <div
                               className="p-2 border-r border-blue-200 text-blue-800 cursor-pointer hover:underline"
@@ -455,6 +461,7 @@ export default function DiseaseIncidentForm() {
                             >
                               {entry.id}
                             </div>
+                            <div className="p-2 border-r border-blue-200">{entry.userGroup}</div>
                             <div className="p-2 border-r border-blue-200">{entry.step}</div>
                             <div className="p-2 border-r border-blue-200">{entry.status}</div>
                             <div className="p-2 border-r border-blue-200">{entry.dateTime}</div>
@@ -482,9 +489,10 @@ export default function DiseaseIncidentForm() {
                         Array.from({ length: 10 }).map((_, index) => (
                           <div
                             key={index}
-                            className={`grid grid-cols-7 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
+                            className={`grid grid-cols-8 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
                           >
                             <div className="p-2 border-r border-blue-200 text-blue-800">{`ID-${String(index + 1).padStart(3, "0")}`}</div>
+                            <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
@@ -596,8 +604,8 @@ export default function DiseaseIncidentForm() {
                   {/* User Group Radio Buttons */}
                   <div className="mb-6">
                     <label className="block text-blue-800 font-bold mb-2">User Group</label>
-                    <div className="flex items-center space-x-6">
-                      <label className="flex items-center">
+                    <div className="flex items-center space-x-4 flex-wrap">
+                      <label className="flex items-center mr-4 mb-2">
                         <input
                           type="radio"
                           name="userGroup"
@@ -608,7 +616,7 @@ export default function DiseaseIncidentForm() {
                         />
                         PHNS
                       </label>
-                      <label className="flex items-center">
+                      <label className="flex items-center mr-4 mb-2">
                         <input
                           type="radio"
                           name="userGroup"
@@ -619,7 +627,7 @@ export default function DiseaseIncidentForm() {
                         />
                         PHN
                       </label>
-                      <label className="flex items-center">
+                      <label className="flex items-center mr-4 mb-2">
                         <input
                           type="radio"
                           name="userGroup"
@@ -629,6 +637,28 @@ export default function DiseaseIncidentForm() {
                           className="mr-2"
                         />
                         AMD
+                      </label>
+                      <label className="flex items-center mr-4 mb-2">
+                        <input
+                          type="radio"
+                          name="userGroup"
+                          value="PHI"
+                          checked={selectedUserGroup === "PHI"}
+                          onChange={() => handleUserGroupChange("PHI")}
+                          className="mr-2"
+                        />
+                        PHI
+                      </label>
+                      <label className="flex items-center mb-2">
+                        <input
+                          type="radio"
+                          name="userGroup"
+                          value="SPHI"
+                          checked={selectedUserGroup === "SPHI"}
+                          onChange={() => handleUserGroupChange("SPHI")}
+                          className="mr-2"
+                        />
+                        SPHI
                       </label>
                     </div>
                   </div>

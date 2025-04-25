@@ -405,8 +405,7 @@ export default function DiseaseIncidentForm() {
 
                   <div>
                     <label className="block text-blue-800 font-bold mb-2">
-                      PHN<span className="text-red-500">*</span> Investigator{" "}
-                      <span className="text-red-500">(mirror from Investigator tab)</span>
+                      PHN<span className="text-red-500">*</span> Investigator
                     </label>
                     <div className="relative">
                       <select className="w-full border border-gray-300 p-2 rounded appearance-none">
@@ -431,8 +430,8 @@ export default function DiseaseIncidentForm() {
               {/* Status Table */}
               <div className="p-4">
                 <div className="border border-blue-300 rounded overflow-hidden">
-                  {/* Table Header */}
-                  <div className="grid grid-cols-8">
+                  {/* Table Header - Changed from grid-cols-8 to grid-cols-7 */}
+                  <div className="grid grid-cols-7">
                     <div className="p-2 border-r border-blue-600 flex items-center bg-blue-800 text-white font-bold">
                       ID <ChevronDown className="ml-1 h-4 w-4" />
                     </div>
@@ -441,19 +440,16 @@ export default function DiseaseIncidentForm() {
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Status</div>
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Date and Time</div>
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Updated by</div>
-                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">
-                      Notes/Reason to return
-                    </div>
-                    <div className="p-2 bg-blue-800 text-white font-bold">Final Diagnosis</div>
+                    <div className="p-2 bg-blue-800 text-white font-bold">Notes/Reason to return</div>
                   </div>
 
-                  {/* Table Body */}
+                  {/* Table Body - Changed from grid-cols-8 to grid-cols-7 */}
                   <div className="bg-white">
                     {statusEntries.length > 0
                       ? statusEntries.map((entry, index) => (
                           <div
                             key={entry.id}
-                            className={`grid grid-cols-8 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
+                            className={`grid grid-cols-7 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
                           >
                             <div
                               className="p-2 border-r border-blue-200 text-blue-800 cursor-pointer hover:underline"
@@ -467,7 +463,7 @@ export default function DiseaseIncidentForm() {
                             <div className="p-2 border-r border-blue-200">{entry.dateTime}</div>
                             <div className="p-2 border-r border-blue-200">{entry.updatedBy}</div>
                             <div
-                              className={`p-2 border-r border-blue-200 ${entry.notes ? "text-blue-600 cursor-pointer hover:underline" : ""}`}
+                              className={`p-2 ${entry.notes ? "text-blue-600 cursor-pointer hover:underline" : ""}`}
                               onClick={() => entry.notes && handleViewNotes(entry)}
                             >
                               {entry.notes
@@ -476,23 +472,15 @@ export default function DiseaseIncidentForm() {
                                   : entry.notes
                                 : ""}
                             </div>
-                            <div className="p-2">
-                              {entry.finalDiagnosis
-                                ? entry.finalDiagnosis.length > 30
-                                  ? `${entry.finalDiagnosis.substring(0, 30)}...`
-                                  : entry.finalDiagnosis
-                                : ""}
-                            </div>
                           </div>
                         ))
                       : // Empty rows
                         Array.from({ length: 10 }).map((_, index) => (
                           <div
                             key={index}
-                            className={`grid grid-cols-8 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
+                            className={`grid grid-cols-7 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
                           >
                             <div className="p-2 border-r border-blue-200 text-blue-800">{`ID-${String(index + 1).padStart(3, "0")}`}</div>
-                            <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
@@ -603,7 +591,9 @@ export default function DiseaseIncidentForm() {
 
                   {/* User Group Radio Buttons */}
                   <div className="mb-6">
-                    <label className="block text-blue-800 font-bold mb-2">User Group</label>
+                    <label className="block text-blue-800 font-bold mb-2">
+                      User Group <span className="text-gray-500 text-sm">(not a real field/defined by system)</span>
+                    </label>
                     <div className="flex items-center space-x-4 flex-wrap">
                       <label className="flex items-center mr-4 mb-2">
                         <input

@@ -128,6 +128,18 @@ export default function DiseaseIncidentForm() {
     )
   }
 
+  // Get name based on user group
+  const getNameByUserGroup = (userGroup: string) => {
+    switch (userGroup) {
+      case "PHN":
+        return "Ana Nuse"
+      case "PHNS":
+        return "Steven Supervisor"
+      default:
+        return "Maria Kersanach"
+    }
+  }
+
   // Add new status entry
   const handleAddStatus = () => {
     if (!selectedStep || !selectedStatus) return
@@ -145,7 +157,7 @@ export default function DiseaseIncidentForm() {
       step: selectedStep,
       status: selectedStatus,
       dateTime: capturedDate, // Only use the date part
-      updatedBy: "Tester's name",
+      updatedBy: getNameByUserGroup(selectedUserGroup),
       notes: returnReason, // Always include the reason if provided
       userGroup: selectedUserGroup,
     }
@@ -565,7 +577,7 @@ export default function DiseaseIncidentForm() {
                       <label className="block text-blue-800 font-bold mb-2">Created by</label>
                       <input
                         type="text"
-                        value="Tester's name"
+                        value={getNameByUserGroup(selectedUserGroup)}
                         readOnly
                         className="w-full bg-gray-200 border border-gray-300 p-2 rounded"
                       />

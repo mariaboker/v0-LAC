@@ -120,22 +120,38 @@ export default function DiseaseIncidentForm() {
     }
   }
 
+  // Check if Final Diagnosis should be enabled
+  const isFinalDiagnosisEnabled = () => {
+    return (
+      selectedUserGroup === "AMD" ||
+      (selectedUserGroup === "PHNS" && selectedStep === "Review" && selectedStatus === "Closed")
+    )
+  }
+
   // Add new status entry
   const handleAddStatus = () => {
     if (!selectedStep || !selectedStatus) return
+
+    // Check if reason is required but not provided
+    const isReasonRequired =
+      selectedStatus.includes("Return") ||
+      selectedStatus.includes("Returned") ||
+      ((selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") && selectedStep === "PHI Support")
+
+    if (isReasonRequired && !returnReason) return
 
     const newEntry: StatusEntry = {
       id: `ID-${String(statusEntries.length + 1).padStart(3, "0")}`,
       step: selectedStep,
       status: selectedStatus,
-      dateTime: `${capturedDate} ${capturedTime}`,
+      dateTime: capturedDate, // Only use the date part
       updatedBy: "Tester's name",
-      notes: selectedStatus.includes("Returned") ? returnReason : "",
+      notes: returnReason, // Always include the reason if provided
       userGroup: selectedUserGroup,
     }
 
-    // Add final diagnosis if AMD user group
-    if (selectedUserGroup === "AMD") {
+    // Add final diagnosis if enabled
+    if (isFinalDiagnosisEnabled() && finalDiagnosis) {
       newEntry.finalDiagnosis = finalDiagnosis
     }
 
@@ -430,26 +446,25 @@ export default function DiseaseIncidentForm() {
               {/* Status Table */}
               <div className="p-4">
                 <div className="border border-blue-300 rounded overflow-hidden">
-                  {/* Table Header - Changed from grid-cols-8 to grid-cols-7 */}
-                  <div className="grid grid-cols-7">
+                  {/* Table Header - Changed to grid-cols-6 */}
+                  <div className="grid grid-cols-6">
                     <div className="p-2 border-r border-blue-600 flex items-center bg-blue-800 text-white font-bold">
                       ID <ChevronDown className="ml-1 h-4 w-4" />
                     </div>
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">User Group</div>
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Step</div>
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Status</div>
-                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Date and Time</div>
-                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Updated by</div>
-                    <div className="p-2 bg-blue-800 text-white font-bold">Notes/Reason to return</div>
+                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Date</div>
+                    <div className="p-2 bg-blue-800 text-white font-bold">Created by</div>
                   </div>
 
-                  {/* Table Body - Changed from grid-cols-8 to grid-cols-7 */}
+                  {/* Table Body - Changed to grid-cols-6 */}
                   <div className="bg-white">
                     {statusEntries.length > 0
                       ? statusEntries.map((entry, index) => (
                           <div
                             key={entry.id}
-                            className={`grid grid-cols-7 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
+                            className={`grid grid-cols-6 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
                           >
                             <div
                               className="p-2 border-r border-blue-200 text-blue-800 cursor-pointer hover:underline"
@@ -460,28 +475,17 @@ export default function DiseaseIncidentForm() {
                             <div className="p-2 border-r border-blue-200">{entry.userGroup}</div>
                             <div className="p-2 border-r border-blue-200">{entry.step}</div>
                             <div className="p-2 border-r border-blue-200">{entry.status}</div>
-                            <div className="p-2 border-r border-blue-200">{entry.dateTime}</div>
-                            <div className="p-2 border-r border-blue-200">{entry.updatedBy}</div>
-                            <div
-                              className={`p-2 ${entry.notes ? "text-blue-600 cursor-pointer hover:underline" : ""}`}
-                              onClick={() => entry.notes && handleViewNotes(entry)}
-                            >
-                              {entry.notes
-                                ? entry.notes.length > 30
-                                  ? `${entry.notes.substring(0, 30)}...`
-                                  : entry.notes
-                                : ""}
-                            </div>
+                            <div className="p-2 border-r border-blue-200">{entry.dateTime.split(" ")[0]}</div>
+                            <div className="p-2">{entry.updatedBy}</div>
                           </div>
                         ))
                       : // Empty rows
                         Array.from({ length: 10 }).map((_, index) => (
                           <div
                             key={index}
-                            className={`grid grid-cols-7 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
+                            className={`grid grid-cols-6 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
                           >
                             <div className="p-2 border-r border-blue-200 text-blue-800">{`ID-${String(index + 1).padStart(3, "0")}`}</div>
-                            <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
@@ -701,29 +705,62 @@ export default function DiseaseIncidentForm() {
                     </div>
                   </div>
 
-                  {selectedStatus.includes("Returned") && (
-                    <div className="mb-6">
-                      <label className="block text-blue-800 font-bold mb-2">Reason to return:</label>
-                      <input
-                        type="text"
-                        className="w-full border border-gray-300 p-2 rounded"
-                        value={returnReason}
-                        onChange={(e) => setReturnReason(e.target.value)}
-                      />
-                    </div>
-                  )}
+                  <div className="mb-6">
+                    <label className="block text-blue-800 font-bold mb-2">Reason:</label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 p-2 rounded"
+                      value={returnReason}
+                      onChange={(e) => setReturnReason(e.target.value)}
+                      disabled={
+                        !(
+                          selectedStatus.includes("Return") ||
+                          selectedStatus.includes("Returned") ||
+                          ((selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") &&
+                            selectedStep === "PHI Support")
+                        )
+                      }
+                      placeholder={
+                        selectedStatus.includes("Return") ||
+                        selectedStatus.includes("Returned") ||
+                        ((selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") &&
+                          selectedStep === "PHI Support")
+                          ? "Enter reason..."
+                          : "Disabled - only available for returns or PHI Support"
+                      }
+                    />
+                  </div>
 
-                  {selectedUserGroup === "AMD" && (
-                    <div className="mb-6">
-                      <label className="block text-blue-800 font-bold mb-2">Final Diagnosis:</label>
-                      <input
-                        type="text"
-                        className="w-full border border-gray-300 p-2 rounded"
+                  <div className="mb-6">
+                    <label className="block text-blue-800 font-bold mb-2">Final Diagnosis:</label>
+                    <div className="relative">
+                      <select
+                        className="w-full border border-gray-300 p-2 rounded appearance-none"
                         value={finalDiagnosis}
                         onChange={(e) => setFinalDiagnosis(e.target.value)}
-                      />
+                        disabled={!isFinalDiagnosisEnabled()}
+                      >
+                        <option value="">
+                          {isFinalDiagnosisEnabled()
+                            ? "Select a diagnosis..."
+                            : "Disabled- only available to AMD or PHNS"}
+                        </option>
+                        <option value="Tuberculosis">Tuberculosis</option>
+                        <option value="Measles">Measles</option>
+                        <option value="Pertussis">Pertussis</option>
+                        <option value="Meningococcal Disease">Meningococcal Disease</option>
+                        <option value="Hepatitis A">Hepatitis A</option>
+                        <option value="Salmonellosis">Salmonellosis</option>
+                        <option value="Shigellosis">Shigellosis</option>
+                        <option value="COVID-19">COVID-19</option>
+                        <option value="Influenza">Influenza</option>
+                        <option value="Legionellosis">Legionellosis</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
@@ -737,7 +774,15 @@ export default function DiseaseIncidentForm() {
                 <button
                   className="bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 rounded px-4 py-1 font-semibold text-white"
                   onClick={handleAddStatus}
-                  disabled={!selectedStep || !selectedStatus || (selectedStatus.includes("Returned") && !returnReason)}
+                  disabled={
+                    !selectedStep ||
+                    !selectedStatus ||
+                    ((selectedStatus.includes("Return") ||
+                      selectedStatus.includes("Returned") ||
+                      ((selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") &&
+                        selectedStep === "PHI Support")) &&
+                      !returnReason)
+                  }
                 >
                   Save
                 </button>
@@ -777,7 +822,7 @@ export default function DiseaseIncidentForm() {
                   </div>
                 </div>
                 <div>
-                  <div className="font-bold text-blue-800">Updated by:</div>
+                  <div className="font-bold text-blue-800">Created by:</div>
                   <div className="p-2 bg-white border border-blue-200 rounded">{viewingEntry.updatedBy}</div>
                 </div>
               </div>
@@ -795,7 +840,7 @@ export default function DiseaseIncidentForm() {
 
               {viewingEntry.notes && (
                 <div className="mb-4">
-                  <div className="font-bold text-blue-800">Reason to return:</div>
+                  <div className="font-bold text-blue-800">Reason:</div>
                   <div className="p-2 bg-white border border-blue-200 rounded whitespace-pre-wrap">
                     {viewingEntry.notes}
                   </div>

@@ -20,27 +20,28 @@ import {
 
 interface StatusEntry {
   id: string
-  step: string
   status: string
-  dateTime: string
+  date: string
+  time: string
   updatedBy: string
   notes: string
   userGroup: string
-  finalDiagnosis?: string
 }
 
 export default function DiseaseIncidentForm() {
   const [selectedSystem, setSelectedSystem] = useState("TRIMS")
   const [assignmentConfirmed, setAssignmentConfirmed] = useState(false)
+  const [censusTract, setCensusTract] = useState("")
+  const [spa, setSpa] = useState("")
+  const [phns, setPhns] = useState("")
+  const [phn, setPhn] = useState("")
 
   // Status section state
   const [statusEntries, setStatusEntries] = useState<StatusEntry[]>([])
   const [showPopup, setShowPopup] = useState(false)
-  const [selectedStep, setSelectedStep] = useState("")
-  const [selectedStatus, setSelectedStatus] = useState("")
   const [selectedUserGroup, setSelectedUserGroup] = useState("PHNS")
+  const [selectedStatus, setSelectedStatus] = useState("")
   const [returnReason, setReturnReason] = useState("")
-  const [finalDiagnosis, setFinalDiagnosis] = useState("")
   const [pageNumber, setPageNumber] = useState("1")
   const [viewingEntry, setViewingEntry] = useState<StatusEntry | null>(null)
   const [capturedDate, setCapturedDate] = useState("")
@@ -62,49 +63,81 @@ export default function DiseaseIncidentForm() {
     return { date, time }
   }
 
+  // Generate random 6-digit number
+  const generateRandomCensusTract = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString()
+  }
+
+  // Handle checkbox change
+  const handleAssignmentConfirmation = (checked: boolean) => {
+    setAssignmentConfirmed(checked)
+    if (checked) {
+      setCensusTract(generateRandomCensusTract())
+      setSpa("2")
+      setPhns("Steven Supervisor")
+      setPhn("Ana Nurse")
+    } else {
+      setCensusTract("")
+      setSpa("")
+      setPhns("")
+      setPhn("")
+    }
+  }
+
   // Open popup and capture current time
   const handleOpenPopup = () => {
     const { date, time } = formatDateTime()
     setCapturedDate(date)
     setCapturedTime(time)
     setSelectedUserGroup("PHNS") // Default to PHNS
-    setSelectedStep("")
     setSelectedStatus("")
     setReturnReason("")
-    setFinalDiagnosis("")
     setShowPopup(true)
   }
 
-  // Update the getStepOptions function to include "PHI Support" for PHNS and SPHI
-  const getStepOptions = () => {
-    if (selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") {
-      return ["Receive Assignment", "Review", "PHI Support"]
-    } else if (selectedUserGroup === "PHN" || selectedUserGroup === "PHI") {
-      return ["Receive Assignment", "Fieldwork Status"]
-    } else if (selectedUserGroup === "AMD") {
-      return ["AMD Review"]
-    }
-    return []
-  }
-
-  // Update the getStatusOptions function to include options for "PHI Support"
-  const getStatusOptions = () => {
-    switch (selectedStep) {
-      case "Receive Assignment":
-        if (selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") {
-          return ["Accepted", "Returned", "Closed", "Transfer"]
-        } else if (selectedUserGroup === "PHN" || selectedUserGroup === "PHI") {
-          return ["Accepted - Fieldwork In Progress", "Returned"]
-        }
-        return []
-      case "Fieldwork Status":
-        return ["Completed", "Returned"]
-      case "Review":
-        return ["Approved", "Returned", "Closed"]
-      case "AMD Review":
-        return ["Pending", "Approved", "Returned"]
-      case "PHI Support":
-        return ["Request", "Completed"]
+  // Get status options based on user group
+  const getStatusOptions = (userGroup: string) => {
+    switch (userGroup) {
+      case "PHNS":
+        return ["Receive Assignment - PHN Assigned", "Return to PHN", "Request PHI Support", "Transfer", "Close"]
+      case "PHN":
+        return [
+          "Receive Assignment - PHN Fieldwork in Progress",
+          "RMD Consultation",
+          "Return to PHNS",
+          "PHN Fieldwork Complete",
+        ]
+      case "SPHI":
+        return ["Assignment Received - PHI Assigned", "Return to PHI", "Fieldwork Approved by SPHI"]
+      case "PHI":
+        return [
+          "Accept Assignment - PHI Fieldwork in Progress",
+          "RMD Consultation",
+          "Return to SPHI",
+          "PHI Fieldwork Complete",
+        ]
+      case "RMD":
+        return ["RMD Review Approved", "RMD Review Returned to Supervisor"]
+      case "Super User":
+        return [
+          "Receive Assignment - PHN Assigned",
+          "Receive Assignment - PHN Fieldwork in Progress",
+          "Assignment Received - PHI Assigned",
+          "Accept Assignment - PHI Fieldwork in Progress",
+          "RMD Consultation",
+          "Return to PHN",
+          "Return to PHNS",
+          "Return to PHI",
+          "Return to SPHI",
+          "Request PHI Support",
+          "Transfer",
+          "Close",
+          "PHN Fieldwork Complete",
+          "PHI Fieldwork Complete",
+          "Fieldwork Approved by SPHI",
+          "RMD Review Approved",
+          "RMD Review Returned to Supervisor",
+        ]
       default:
         return []
     }
@@ -113,19 +146,12 @@ export default function DiseaseIncidentForm() {
   // Handle user group change
   const handleUserGroupChange = (group: string) => {
     setSelectedUserGroup(group)
-    setSelectedStep("")
     setSelectedStatus("")
-    if (group !== "AMD") {
-      setFinalDiagnosis("")
-    }
   }
 
-  // Check if Final Diagnosis should be enabled
-  const isFinalDiagnosisEnabled = () => {
-    return (
-      selectedUserGroup === "AMD" ||
-      (selectedUserGroup === "PHNS" && selectedStep === "Review" && selectedStatus === "Closed")
-    )
+  // Check if reason field should be enabled
+  const isReasonRequired = (status: string) => {
+    return status.toLowerCase().includes("return") || status.toLowerCase().includes("request phi support")
   }
 
   // Get name based on user group
@@ -142,37 +168,25 @@ export default function DiseaseIncidentForm() {
 
   // Add new status entry
   const handleAddStatus = () => {
-    if (!selectedStep || !selectedStatus) return
+    if (!selectedStatus) return
 
     // Check if reason is required but not provided
-    const isReasonRequired =
-      selectedStatus.includes("Return") ||
-      selectedStatus.includes("Returned") ||
-      ((selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") && selectedStep === "PHI Support")
-
-    if (isReasonRequired && !returnReason) return
+    if (isReasonRequired(selectedStatus) && !returnReason) return
 
     const newEntry: StatusEntry = {
-      id: `ID-${String(statusEntries.length + 1).padStart(3, "0")}`,
-      step: selectedStep,
+      id: String(statusEntries.length + 1).padStart(2, "0"),
       status: selectedStatus,
-      dateTime: capturedDate, // Only use the date part
+      date: capturedDate,
+      time: capturedTime,
       updatedBy: getNameByUserGroup(selectedUserGroup),
       notes: returnReason, // Always include the reason if provided
       userGroup: selectedUserGroup,
     }
 
-    // Add final diagnosis if enabled
-    if (isFinalDiagnosisEnabled() && finalDiagnosis) {
-      newEntry.finalDiagnosis = finalDiagnosis
-    }
-
     setStatusEntries([...statusEntries, newEntry])
     setShowPopup(false)
-    setSelectedStep("")
     setSelectedStatus("")
     setReturnReason("")
-    setFinalDiagnosis("")
   }
 
   // Handle page number change
@@ -264,7 +278,7 @@ export default function DiseaseIncidentForm() {
                 <span className="font-bold text-blue-800">Person ID:</span> 4057060
               </p>
               <p>
-                <span className="font-bold text-blue-800">Disease:</span> CYSTICERCOSIS
+                <span className="font-bold text-blue-800">Disease:</span> Hep A
               </p>
             </div>
             <div>
@@ -280,13 +294,16 @@ export default function DiseaseIncidentForm() {
           {/* Tabs */}
           <div className="flex border-b border-blue-300">
             <button className="px-8 py-3 bg-gradient-to-b from-blue-300 to-blue-200 border-r border-blue-300 text-blue-800 font-bold">
-              Patient
+              Patients
             </button>
             <button className="px-8 py-3 bg-gradient-to-b from-blue-300 to-blue-200 border-r border-blue-300 text-blue-800 font-bold">
-              Investigation
+              Case Management
             </button>
             <button className="px-8 py-3 bg-gradient-to-b from-blue-300 to-blue-200 border-r border-blue-300 text-blue-800 font-bold">
               Supplemental
+            </button>
+            <button className="px-8 py-3 bg-gradient-to-b from-blue-300 to-blue-200 border-r border-blue-300 text-blue-800 font-bold">
+              Investigation
             </button>
           </div>
 
@@ -329,6 +346,17 @@ export default function DiseaseIncidentForm() {
                           className="mr-1"
                         />
                         Casewatch
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="system"
+                          value="CAIR"
+                          checked={selectedSystem === "CAIR"}
+                          onChange={() => setSelectedSystem("CAIR")}
+                          className="mr-1"
+                        />
+                        CAIR
                       </label>
                       <label className="flex items-center">
                         <input
@@ -405,21 +433,31 @@ export default function DiseaseIncidentForm() {
                   <input
                     type="checkbox"
                     checked={assignmentConfirmed}
-                    onChange={() => setAssignmentConfirmed(!assignmentConfirmed)}
+                    onChange={(e) => handleAssignmentConfirmation(e.target.checked)}
                     className="mr-2 h-4 w-4"
                   />
-                  Check here to Confirm Assignment
+                  PHNS Check Here to Match PHN from Census Tract
                 </label>
 
                 <div className="grid grid-cols-2 gap-8 mt-4">
                   <div>
                     <label className="block text-blue-800 font-bold mb-2">Census Tract</label>
-                    <input type="text" className="w-full bg-gray-200 border border-gray-300 p-2 rounded" />
+                    <input
+                      type="text"
+                      value={censusTract}
+                      onChange={(e) => setCensusTract(e.target.value)}
+                      className="w-full bg-gray-200 border border-gray-300 p-2 rounded"
+                    />
                   </div>
 
                   <div>
                     <label className="block text-blue-800 font-bold mb-2">SPA/Mega SPA</label>
-                    <input type="text" className="w-full bg-gray-200 border border-gray-300 p-2 rounded" />
+                    <input
+                      type="text"
+                      value={spa}
+                      onChange={(e) => setSpa(e.target.value)}
+                      className="w-full bg-gray-200 border border-gray-300 p-2 rounded"
+                    />
                   </div>
                 </div>
 
@@ -428,12 +466,36 @@ export default function DiseaseIncidentForm() {
                     <label className="block text-blue-800 font-bold mb-2">
                       PHNS<span className="text-red-500">*</span>
                     </label>
+                    <input
+                      type="text"
+                      value={phns}
+                      onChange={(e) => setPhns(e.target.value)}
+                      className="w-full border border-gray-300 p-2 rounded"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-blue-800 font-bold mb-2">
+                      PHN (please assign on the investigation tab)
+                    </label>
+                    <input
+                      type="text"
+                      value={phn}
+                      onChange={(e) => setPhn(e.target.value)}
+                      className="w-full border border-gray-300 p-2 rounded"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8 mt-4">
+                  <div>
+                    <label className="block text-blue-800 font-bold mb-2">SPHI</label>
                     <input type="text" className="w-full border border-gray-300 p-2 rounded" />
                   </div>
 
                   <div>
                     <label className="block text-blue-800 font-bold mb-2">
-                      PHN<span className="text-red-500">*</span> Investigator
+                      PHI (please assign on the investigation tab)
                     </label>
                     <div className="relative">
                       <select className="w-full border border-gray-300 p-2 rounded appearance-none">
@@ -458,19 +520,17 @@ export default function DiseaseIncidentForm() {
               {/* Status Table */}
               <div className="p-4">
                 <div className="border border-blue-300 rounded overflow-hidden">
-                  {/* Table Header - Changed to grid-cols-6 */}
+                  {/* Table Header */}
                   <div className="grid grid-cols-6">
-                    <div className="p-2 border-r border-blue-600 flex items-center bg-blue-800 text-white font-bold">
-                      ID <ChevronDown className="ml-1 h-4 w-4" />
-                    </div>
-                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">User Group</div>
-                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Step</div>
-                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Status</div>
+                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">ID</div>
+                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Created by</div>
                     <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Date</div>
-                    <div className="p-2 bg-blue-800 text-white font-bold">Created by</div>
+                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">Time</div>
+                    <div className="p-2 border-r border-blue-600 bg-blue-800 text-white font-bold">User Group</div>
+                    <div className="p-2 bg-blue-800 text-white font-bold">Investigation Status</div>
                   </div>
 
-                  {/* Table Body - Changed to grid-cols-6 */}
+                  {/* Table Body */}
                   <div className="bg-white">
                     {statusEntries.length > 0
                       ? statusEntries.map((entry, index) => (
@@ -478,17 +538,17 @@ export default function DiseaseIncidentForm() {
                             key={entry.id}
                             className={`grid grid-cols-6 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
                           >
+                            <div className="p-2 border-r border-blue-200">{entry.id}</div>
+                            <div className="p-2 border-r border-blue-200">{entry.updatedBy}</div>
+                            <div className="p-2 border-r border-blue-200">{entry.date}</div>
+                            <div className="p-2 border-r border-blue-200">{entry.time}</div>
+                            <div className="p-2 border-r border-blue-200">{entry.userGroup}</div>
                             <div
-                              className="p-2 border-r border-blue-200 text-blue-800 cursor-pointer hover:underline"
+                              className="p-2 text-blue-800 cursor-pointer hover:underline"
                               onClick={() => handleViewEntry(entry)}
                             >
-                              {entry.id}
+                              {entry.status.length > 30 ? `${entry.status.substring(0, 30)}...` : entry.status}
                             </div>
-                            <div className="p-2 border-r border-blue-200">{entry.userGroup}</div>
-                            <div className="p-2 border-r border-blue-200">{entry.step}</div>
-                            <div className="p-2 border-r border-blue-200">{entry.status}</div>
-                            <div className="p-2 border-r border-blue-200">{entry.dateTime.split(" ")[0]}</div>
-                            <div className="p-2">{entry.updatedBy}</div>
                           </div>
                         ))
                       : // Empty rows
@@ -497,7 +557,7 @@ export default function DiseaseIncidentForm() {
                             key={index}
                             className={`grid grid-cols-6 ${index % 2 === 0 ? "bg-blue-50" : "bg-white"} border-b border-blue-200`}
                           >
-                            <div className="p-2 border-r border-blue-200 text-blue-800">{`ID-${String(index + 1).padStart(3, "0")}`}</div>
+                            <div className="p-2 border-r border-blue-200">{String(index + 1).padStart(2, "0")}</div>
                             <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
                             <div className="p-2 border-r border-blue-200"></div>
@@ -637,12 +697,12 @@ export default function DiseaseIncidentForm() {
                         <input
                           type="radio"
                           name="userGroup"
-                          value="AMD"
-                          checked={selectedUserGroup === "AMD"}
-                          onChange={() => handleUserGroupChange("AMD")}
+                          value="RMD"
+                          checked={selectedUserGroup === "RMD"}
+                          onChange={() => handleUserGroupChange("RMD")}
                           className="mr-2"
                         />
-                        AMD
+                        RMD
                       </label>
                       <label className="flex items-center mr-4 mb-2">
                         <input
@@ -655,7 +715,7 @@ export default function DiseaseIncidentForm() {
                         />
                         PHI
                       </label>
-                      <label className="flex items-center mb-2">
+                      <label className="flex items-center mr-4 mb-2">
                         <input
                           type="radio"
                           name="userGroup"
@@ -666,54 +726,37 @@ export default function DiseaseIncidentForm() {
                         />
                         SPHI
                       </label>
+                      <label className="flex items-center mb-2">
+                        <input
+                          type="radio"
+                          name="userGroup"
+                          value="Super User"
+                          checked={selectedUserGroup === "Super User"}
+                          onChange={() => handleUserGroupChange("Super User")}
+                          className="mr-2"
+                        />
+                        Super User
+                      </label>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-8 mb-6">
-                    <div>
-                      <label className="block text-blue-800 font-bold mb-2">Select the Step of the Investigation</label>
-                      <div className="relative">
-                        <select
-                          className="w-full border border-gray-300 p-2 rounded appearance-none"
-                          value={selectedStep}
-                          onChange={(e) => {
-                            setSelectedStep(e.target.value)
-                            setSelectedStatus("")
-                          }}
-                        >
-                          <option value="">Select a step...</option>
-                          {getStepOptions().map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                          <ChevronDown className="h-4 w-4 text-gray-500" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-blue-800 font-bold mb-2">Select the Status of that Step</label>
-                      <div className="relative">
-                        <select
-                          className="w-full border border-gray-300 p-2 rounded appearance-none"
-                          value={selectedStatus}
-                          onChange={(e) => setSelectedStatus(e.target.value)}
-                          disabled={!selectedStep}
-                        >
-                          <option value="">Select a status...</option>
-                          {getStatusOptions().map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                          <ChevronDown className="h-4 w-4 text-gray-500" />
-                        </div>
-                      </div>
+                  {/* Investigation Status Radio Buttons */}
+                  <div className="mb-6">
+                    <label className="block text-blue-800 font-bold mb-2">Investigation Status:</label>
+                    <div className="space-y-2">
+                      {getStatusOptions(selectedUserGroup).map((option) => (
+                        <label key={option} className="flex items-start">
+                          <input
+                            type="radio"
+                            name="statusOption"
+                            value={option}
+                            checked={selectedStatus === option}
+                            onChange={() => setSelectedStatus(option)}
+                            className="mr-2 mt-1"
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
 
@@ -724,54 +767,13 @@ export default function DiseaseIncidentForm() {
                       className="w-full border border-gray-300 p-2 rounded"
                       value={returnReason}
                       onChange={(e) => setReturnReason(e.target.value)}
-                      disabled={
-                        !(
-                          selectedStatus.includes("Return") ||
-                          selectedStatus.includes("Returned") ||
-                          ((selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") &&
-                            selectedStep === "PHI Support")
-                        )
-                      }
+                      disabled={!isReasonRequired(selectedStatus)}
                       placeholder={
-                        selectedStatus.includes("Return") ||
-                        selectedStatus.includes("Returned") ||
-                        ((selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") &&
-                          selectedStep === "PHI Support")
+                        isReasonRequired(selectedStatus)
                           ? "Enter reason..."
-                          : "Disabled - only available for returns or PHI Support"
+                          : "Disabled - only available for returns or PHI Support requests"
                       }
                     />
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-blue-800 font-bold mb-2">Final Diagnosis:</label>
-                    <div className="relative">
-                      <select
-                        className="w-full border border-gray-300 p-2 rounded appearance-none"
-                        value={finalDiagnosis}
-                        onChange={(e) => setFinalDiagnosis(e.target.value)}
-                        disabled={!isFinalDiagnosisEnabled()}
-                      >
-                        <option value="">
-                          {isFinalDiagnosisEnabled()
-                            ? "Select a diagnosis..."
-                            : "Disabled- only available to AMD or PHNS"}
-                        </option>
-                        <option value="Tuberculosis">Tuberculosis</option>
-                        <option value="Measles">Measles</option>
-                        <option value="Pertussis">Pertussis</option>
-                        <option value="Meningococcal Disease">Meningococcal Disease</option>
-                        <option value="Hepatitis A">Hepatitis A</option>
-                        <option value="Salmonellosis">Salmonellosis</option>
-                        <option value="Shigellosis">Shigellosis</option>
-                        <option value="COVID-19">COVID-19</option>
-                        <option value="Influenza">Influenza</option>
-                        <option value="Legionellosis">Legionellosis</option>
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                        <ChevronDown className="h-4 w-4 text-gray-500" />
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -786,15 +788,7 @@ export default function DiseaseIncidentForm() {
                 <button
                   className="bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 rounded px-4 py-1 font-semibold text-white"
                   onClick={handleAddStatus}
-                  disabled={
-                    !selectedStep ||
-                    !selectedStatus ||
-                    ((selectedStatus.includes("Return") ||
-                      selectedStatus.includes("Returned") ||
-                      ((selectedUserGroup === "PHNS" || selectedUserGroup === "SPHI") &&
-                        selectedStep === "PHI Support")) &&
-                      !returnReason)
-                  }
+                  disabled={!selectedStatus || (isReasonRequired(selectedStatus) && !returnReason)}
                 >
                   Save
                 </button>
@@ -809,7 +803,7 @@ export default function DiseaseIncidentForm() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-blue-50 border border-blue-300 rounded w-full max-w-2xl">
             <div className="bg-gradient-to-r from-blue-200 to-blue-100 p-2 border-b border-blue-300 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-blue-800">Details for {viewingEntry.id}</h2>
+              <h2 className="text-lg font-bold text-blue-800">Details for ID {viewingEntry.id}</h2>
               <button onClick={() => setViewingEntry(null)} className="text-blue-800 hover:text-blue-600">
                 <X className="h-5 w-5" />
               </button>
@@ -821,33 +815,32 @@ export default function DiseaseIncidentForm() {
                   <div className="p-2 bg-white border border-blue-200 rounded">{viewingEntry.id}</div>
                 </div>
                 <div>
-                  <div className="font-bold text-blue-800">Date and Time:</div>
-                  <div className="p-2 bg-white border border-blue-200 rounded">{viewingEntry.dateTime}</div>
+                  <div className="font-bold text-blue-800">Date:</div>
+                  <div className="p-2 bg-white border border-blue-200 rounded">{viewingEntry.date}</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <div className="font-bold text-blue-800">Time:</div>
+                  <div className="p-2 bg-white border border-blue-200 rounded">{viewingEntry.time}</div>
+                </div>
                 <div>
                   <div className="font-bold text-blue-800">User Group:</div>
                   <div className="p-2 bg-white border border-blue-200 rounded">
                     {viewingEntry.userGroup || "Not specified"}
                   </div>
                 </div>
-                <div>
-                  <div className="font-bold text-blue-800">Created by:</div>
-                  <div className="p-2 bg-white border border-blue-200 rounded">{viewingEntry.updatedBy}</div>
-                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <div className="font-bold text-blue-800">Step:</div>
-                  <div className="p-2 bg-white border border-blue-200 rounded">{viewingEntry.step}</div>
-                </div>
-                <div>
-                  <div className="font-bold text-blue-800">Status:</div>
-                  <div className="p-2 bg-white border border-blue-200 rounded">{viewingEntry.status}</div>
-                </div>
+              <div className="mb-4">
+                <div className="font-bold text-blue-800">Created by:</div>
+                <div className="p-2 bg-white border border-blue-200 rounded">{viewingEntry.updatedBy}</div>
+              </div>
+
+              <div className="mb-4">
+                <div className="font-bold text-blue-800">Investigation Status:</div>
+                <div className="p-2 bg-white border border-blue-200 rounded">{viewingEntry.status}</div>
               </div>
 
               {viewingEntry.notes && (
@@ -855,15 +848,6 @@ export default function DiseaseIncidentForm() {
                   <div className="font-bold text-blue-800">Reason:</div>
                   <div className="p-2 bg-white border border-blue-200 rounded whitespace-pre-wrap">
                     {viewingEntry.notes}
-                  </div>
-                </div>
-              )}
-
-              {viewingEntry.finalDiagnosis && (
-                <div className="mb-4">
-                  <div className="font-bold text-blue-800">Final Diagnosis:</div>
-                  <div className="p-2 bg-white border border-blue-200 rounded whitespace-pre-wrap">
-                    {viewingEntry.finalDiagnosis}
                   </div>
                 </div>
               )}
